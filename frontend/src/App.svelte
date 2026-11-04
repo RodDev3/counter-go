@@ -1,79 +1,84 @@
-<script>
-  import logo from './assets/images/logo-universal.png'
-  import {Greet} from '../wailsjs/go/main/App.js'
+<script lang="ts">
+    import { onMount } from 'svelte';
+    import * as Counter from '../wailsjs/go/main/Counter.js'
+    import { main as models } from '../wailsjs/go/models.js';
+    import CounterRow from './CounterRow.svelte';
 
-  let resultText = "Please enter your name below 👇"
-  let name
+    let counter = $state<models.Counter | null>(null)
 
-  function greet() {
-    Greet(name).then(result => resultText = result)
-  }
+    interface CounterRow {
+        label: string
+        actionIncrement: () => Promise<models.Counter>
+        actionDecrement: () => Promise<models.Counter>
+        actionAuto: (() => Promise<models.Counter>) | null
+        property: keyof models.Counter
+    }
+
+    const counterRows:CounterRow[] = [
+        {
+            label: "Attempts",
+            actionIncrement: Counter.IncrementAttempts,
+            actionDecrement: Counter.DecrementAttempts,
+            actionAuto: Counter.AutoFail,
+            property: "attempts"
+        },
+        {
+            label: "Success",
+            actionIncrement: Counter.IncrementSuccess,
+            actionDecrement: Counter.DecrementSuccess,
+            actionAuto: Counter.AutoSuccess,
+            property: "success"
+        },
+        {
+            label: "Success (Perfect)",
+            actionIncrement: Counter.IncrementSuccessPerfect,
+            actionDecrement: Counter.DecrementSuccessPerfect,
+            actionAuto: Counter.AutoSuccessPerfect,
+            property: "successPerfect"
+        },
+        {
+            label: "Current Streak",
+            actionIncrement: Counter.IncrementCurrentStreak,
+            actionDecrement: Counter.DecrementCurrentStreak,
+            actionAuto: null,
+            property: "currentStreak"
+        },
+        {
+            label: "Best Streak",
+            actionIncrement: Counter.IncrementBestStreak,
+            actionDecrement: Counter.DecrementBestStreak,
+            actionAuto: null,
+            property: "bestStreak"
+        },
+    ]
+
+    onMount(async () => {
+        try{
+            counter = await Counter.GetCounter()
+        }catch {
+            alert("Une erreur est survenue lors de l'initialisation de l'application")
+        }
+
+    })
+
+    async function handleAction(action: () => Promise<models.Counter>) {
+        try{
+            counter = await action()
+        }catch{
+            alert('Une erreur est survenue')
+        }
+    }
 </script>
 
 <main>
-  <img alt="Wails logo" id="logo" src="{logo}">
-  <div class="result" id="result">{resultText}</div>
-  <div class="input-box" id="input">
-    <input autocomplete="off" bind:value={name} class="input" id="name" type="text"/>
-    <button class="btn" on:click={greet}>Greet</button>
-  </div>
+    {#if counter}
+        {#each counterRows as row }
+            <CounterRow label={row.label}
+                actionIncrement={() => handleAction(row.actionIncrement)}
+                actionDecrement={() => handleAction(row.actionDecrement)}
+                actionAuto={row.actionAuto ? () => handleAction(row.actionAuto!) : null}
+                count={counter[row.property]}
+                />
+        {/each}
+    {/if}
 </main>
-
-<style>
-
-  #logo {
-    display: block;
-    width: 50%;
-    height: 50%;
-    margin: auto;
-    padding: 10% 0 0;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-size: 100% 100%;
-    background-origin: content-box;
-  }
-
-  .result {
-    height: 20px;
-    line-height: 20px;
-    margin: 1.5rem auto;
-  }
-
-  .input-box .btn {
-    width: 60px;
-    height: 30px;
-    line-height: 30px;
-    border-radius: 3px;
-    border: none;
-    margin: 0 0 0 20px;
-    padding: 0 8px;
-    cursor: pointer;
-  }
-
-  .input-box .btn:hover {
-    background-image: linear-gradient(to top, #cfd9df 0%, #e2ebf0 100%);
-    color: #333333;
-  }
-
-  .input-box .input {
-    border: none;
-    border-radius: 3px;
-    outline: none;
-    height: 30px;
-    line-height: 30px;
-    padding: 0 10px;
-    background-color: rgba(240, 240, 240, 1);
-    -webkit-font-smoothing: antialiased;
-  }
-
-  .input-box .input:hover {
-    border: none;
-    background-color: rgba(255, 255, 255, 1);
-  }
-
-  .input-box .input:focus {
-    border: none;
-    background-color: rgba(255, 255, 255, 1);
-  }
-
-</style>
